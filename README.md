@@ -1,10 +1,9 @@
 ## AWS Lambda Test in NodeJS
 + 람다는 컨테이너(sandbox 라고 불리우는) 내부에서 실행된다.
-+ Handler 외부의 코드는 람다가 생성/수정 될 때 실행된다.
-+ 정확히 말하면 컨테이너가 생성 될 때 실행된다.
-+ 컨테이너는 성능을 위하여 기본적으로 재사용을 하며, 일정시간이(체감상 1시간정도) 지나면 삭제되고 새로 생성 된다.
-+ 항상 컨테이너가 재사용되는건 아니기 때문에 람다함수의 코드는 '상태 비저장' 스타일로 작성되어야 합니다.
-+ 람다의 사용가능한 디스크영역은 (/tmp) 는 동일 컨테이너에서는 공유하여 사용한다.
++ Handler 외부의 코드는 람다가 생성/수정 될 때 실행된다. 정확히 말하면 컨테이너가 생성 될 때 실행된다.
++ 컨테이너는 성능을 위하여 기본적으로 재사용을 하지만 일정시간이(체감상 1시간정도) 지나면 삭제되고 새로 생성된다. 람다 코드의 변경 및 람다의 설정정보가 바뀔때도 새로 생성된다.
++ 항상 컨테이너가 재사용되는건 아니기 때문에 람다함수의 코드는 '상태 비저장' 스타일로 작성되어야 합니다. (아주 중요)
++ 람다의 사용가능한 디스크영역은 (/tmp) 는 동일 컨테이너내에서는 공유하여 사용한다.
 
 ### 1. Global variable vs Local variable TEST (globaltest.js)
 ```javascript
@@ -24,6 +23,7 @@ exports.handler = function (event, context) {
 ```
 + 1번의 경우 i 가 Handler 외부에 선언되어 컨테이너를 재사용하게 되므로 매번 초기화가 되지 않는다.
 + 2번의 경우 i 가 Handler 내부에 선언되어 컨테이너를 재사용 하더라도 항상 초기화가 일어나게 된다.
++ 1번의 경우라 하더라도 컨테이너가 새로 생성되 버리면 초기화가 일어나게 된다.
 
 ### 2. Global variable Parallel Call TEST (parallel.js)
 ```javascript
@@ -64,6 +64,8 @@ exports.handler = function (event, context) {
 + 람다함수를 동시에 100번 실행했을때 발생하는 문제점을 알아보자.
 + 1번의 경우 i 가 Handler 외부에 선언되어 컨테이너를 재사용하게 되므로 매번 초기화가 되지 않는다.
 + 매번 초기화가 되지 않는다 하더라도 전역변수가 스레드에 안전하다면 SQS 에 '0'~'99' 까지 하나씩 총(100개) 들어가야 하지만 그렇지 않다는 결과를 볼 수 있다.
++ 여기서 크롬의 Extenstion 인 RESTfull Stress 1.4.0 으로 테스트를 진행하였으나 API Gateway Service 가 병렬로 수행되지 않았다. (이부분은 분명히 혼자서 테스트를 잘했었는데 갑자기 데모 시에 병렬 테스트가 진행이 안되었음) 그래서 NodeJS 로 https client 를 만들어서 테스트를 해보니 병렬처리시 스레드에 안전하지 못하다는 결과를 얻었다.
++ 방법은 람다의 endpoint 를 API Gateway Service 로 만들어 두고 병렬 실행 테스트를 하였다.
 
 ### 3. Global variable & Module require TEST (index.js)
 ```javascript
@@ -97,6 +99,7 @@ exports.handler = function (event, context) {
 + 기본적으로 NodeJS 에서 require 는 caching 이 되기때문에 require 시마다 동일한 모듈객체를 리턴한다.
 + 1, 2, 3번의 경우는 두번째 실행부터 init data => {id: 7, name:'eddie'} 가 찍히게 된다.
 + 4번의 경우는 caching 된 모듈을 삭제하고 require 로 선언한 경우라 init data => {id: undefined, name:undefined} 가 찍히게 된다.
++ 1, 2, 3번의 경우도 컨테이너가 새로 생성된 경우라면 모두 초기화가 발생한다.
 
 ### 4. Share disk area (/tmp) TEST (filetest.js)
 ```javascript
