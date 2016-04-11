@@ -1,4 +1,5 @@
 ## AWS Lambda Test in NodeJS
++ 람다의 NodeJS 버전이 추가되었다. (We recommend selecting Node.js 4.3 as the runtime for functions written in Node.js.) 물론 기존의 0.10.X 도 계속 지원한다.
 + 람다는 컨테이너(sandbox 라고 불리우는) 내부에서 실행된다.
 + Handler 외부의 코드는 람다가 생성/수정 될 때 실행된다. 정확히 말하면 컨테이너가 생성 될 때 실행된다.
 + 컨테이너는 성능을 위하여 기본적으로 재사용을 하지만 일정시간이(체감상 1시간정도) 지나면 삭제되고 새로 생성된다. 람다 코드의 변경 및 람다의 설정정보가 바뀔때도 새로 생성된다.
